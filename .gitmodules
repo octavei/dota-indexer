@@ -1,0 +1,9 @@
+[submodule "dot-20"]
+	path = dot-20
+	url = https://github.com/octavei/dot-20.git
+[submodule "dota-indexer-db"]
+	path = dota-indexer-db
+	url = https://github.com/octavei/dota-indexer-db.git
+[submodule "dota-indexer-crawler"]
+	path = dota-indexer-crawler
+	url = https://github.com/octavei/dota-indexer-crawler.git
