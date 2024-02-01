@@ -4,6 +4,7 @@ from dotadb.db import DotaDB
 from dotacrawler.crawler import RemarkCrawler
 from dot20.dot20 import Dot20
 from substrateinterface import SubstrateInterface
+from substrateinterface.exceptions import SubstrateRequestException
 from typing import Dict
 
 
@@ -17,7 +18,7 @@ class Indexer:
         # fixme 协议里面对json内容做最基本的过滤
         self.dot20 = Dot20(db, self.crawler.substrate.ss58_format)
         # self.start_block = start_block
-        # 支持的ticks 未来投票上
+        # 支持的ticks 未来投票
         self.supported_ticks = ["dota", "dddd"]
         # 支持的操作
         self.supported_ops = ["deploy", "mint", "transfer", "transferFrom", "approve", "memo"]
@@ -128,7 +129,7 @@ class Indexer:
         print("分类后的其他交易为:", res)
         return mint_remarks, res
 
-    def do_mint(self, remarks_dict: Dict[str, list]):
+    def _do_mint(self, remarks_dict: Dict[str, list]):
         print("mint_remarks: ", remarks_dict)
         for item, value in remarks_dict.items():
             deploy_info = self.db.get_deploy_info(item)
@@ -139,14 +140,15 @@ class Indexer:
             if mode == "fair":
                 amt = deploy_info[0][12]
                 av_amt = amt / len(value)
-            for v in value:
+            for v_id, v in enumerate(value):
                 memo = v["memo"]
                 if mode == "fair":
                     memo["lim"] = av_amt
                 # fixme 确定提交方式
-                self.dot20.mint(**memo)
+                v[memo] = json.dumps(memo)
+                self.dot20.mint(**v)
 
-    def do_other_ops(self, remarks: list[dict]):
+    def _do_other_ops(self, remarks: list[dict]):
         es = []
         extrinsic_index = 0 if len(remarks) == 0 else remarks[0]["extrinsic_index"]
         for remark_id, remark in enumerate(remarks):
@@ -164,6 +166,22 @@ class Indexer:
 
                     if batchall_index != b["batchall_index"] or b_id == len(es) - 1:
                         # todo 以batchall作为单位去批量原子执行
+                        for b in bs:
+                            b_m = b["memo"]
+                            b["memo"] = json.dumps(b_m)
+                            if b_m.get("op") == "deploy":
+                                self.dot20.deploy(**b)
+                            elif b_m.get("op") == "mint":
+                                self.dot20.mint(**b)
+                            elif b_m.get("op") == "transfer":
+                                self.dot20.transfer(**b)
+                            elif b_m.get("op") == "approve":
+                                self.dot20.approve(**b)
+                            elif b_m.get("op") == "transferFrom":
+                                self.dot20.transferFrom(**b)
+                            else:
+                                print("不支持的op操作")
+
                         print(f"待执行的非mint交易: \n {bs}")
                         bs = []
                         batchall_index = b["batchall_index"]
@@ -174,8 +192,8 @@ class Indexer:
     def _execute_remarks_by_per_batchall(self, remaks: list[dict]):
         base_filter_res = self._base_filter_remarks(remaks)
         mint_remarks, other_remarks = self._classify_remarks(base_filter_res)
-        self.do_mint(mint_remarks)
-        self.do_other_ops(other_remarks)
+        self._do_mint(mint_remarks)
+        self._do_other_ops(other_remarks)
 
     def run(self):
         while True:
@@ -183,7 +201,11 @@ class Indexer:
             latest_block_num = self.crawler.substrate.get_block_number(latest_block_hash)
             if self.crawler.start_block + self.crawler.delay <= latest_block_num:
                 print(f"开始爬取区块高度为#{self.crawler.start_block}的extrinsics")
-                remarks = self.crawler.get_dota_remarks_by_block_num(self.crawler.start_block)
+                try:
+                    remarks = self.crawler.get_dota_remarks_by_block_num(self.crawler.start_block)
+                except (ConnectionError, SubstrateRequestException) as e:
+                    print("连接断开，正在连接。。。。")
+                    continue
                 self._execute_remarks_by_per_batchall(remarks)
                 self.crawler.start_block += 1
 
@@ -197,6 +219,7 @@ if __name__ == "__main__":
     crawler = RemarkCrawler(substrate, delay, 273115)
     url = 'mysql+mysqlconnector://root:116000@localhost/wjy'
     db = DotaDB(url)
+    # db.drop_all_tick_table("dota")
     indexer = Indexer(db, crawler)
     indexer.run()
     # crawler.crawl()
