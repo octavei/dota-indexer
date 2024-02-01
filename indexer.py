@@ -207,6 +207,7 @@ class Indexer:
                     print("连接断开，正在连接。。。。")
                     continue
                 self._execute_remarks_by_per_batchall(remarks)
+                # todo 标记高度状态
                 self.crawler.start_block += 1
 
 
@@ -216,7 +217,8 @@ if __name__ == "__main__":
         url=url,
     )
     delay = 2
-    crawler = RemarkCrawler(substrate, delay, 273115)
+    # todo 查询高度
+    crawler = RemarkCrawler(substrate, delay, 361823)
     url = 'mysql+mysqlconnector://root:116000@localhost/wjy'
     db = DotaDB(url)
     # db.drop_all_tick_table("dota")
