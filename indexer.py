@@ -74,13 +74,13 @@ class Indexer:
                                         "op"))
                                     print("非法op和tick， 抛弃整个batchall")
                                     break
-                                if memo.get("op") == "memo":
-                                    try:
-                                        b["memo"] = json.dumps(b["memo"])
-                                        self.dot20.fmt_json_data(memo.get("op"), **b)
-                                    except Exception as e:
-                                        print(f"json {b} 错误 err: {e}")
-                                        break
+                                # if memo.get("op") == "memo":
+                                try:
+                                    b["memo"] = json.dumps(b["memo"])
+                                    self.dot20.fmt_json_data(memo.get("op"), **b)
+                                except Exception as e:
+                                    print(f"json {b} 错误 err: {e}")
+                                    break
                         else:
                             print(f"batchall过滤成功 :{bs}")
                             res.extend(bs)
@@ -150,9 +150,12 @@ class Indexer:
         es = []
         extrinsic_index = 0 if len(remarks) == 0 else remarks[0]["extrinsic_index"]
         for remark_id, remark in enumerate(remarks):
+
             if extrinsic_index == remark["extrinsic_index"]:
+                print(remark_id, remark)
                 es.append(remark)
-            if extrinsic_index != remark["extrinsic_index"] or remark_id == len(remarks) - 0:
+            if extrinsic_index != remark["extrinsic_index"] or remark_id == len(remarks) - 1:
+                print("hahahah:", es)
                 batchall_index = 0 if len(es) == 0 else es[0]["batchall_index"]
                 bs = []
                 for b_id, b in enumerate(es):
@@ -161,7 +164,7 @@ class Indexer:
 
                     if batchall_index != b["batchall_index"] or b_id == len(es) - 1:
                         # todo 以batchall作为单位去批量原子执行
-
+                        print(f"待执行的非mint交易: \n {bs}")
                         bs = []
                         batchall_index = b["batchall_index"]
                 es = []
