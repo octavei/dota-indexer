@@ -275,7 +275,7 @@ class Indexer:
                 latest_block_hash = self.crawler.substrate.get_chain_finalised_head()
                 latest_block_num = self.crawler.substrate.get_block_number(latest_block_hash)
                 if self.crawler.start_block + self.crawler.delay <= latest_block_num:
-                    print(f"开始爬取区块高度为#{self.crawler.start_block}的extrinsics")
+                    print(f"开始爬取区块高度为#{self.crawler.start_block} 的extrinsics")
                     # try:
                     remarks = self.crawler.get_dota_remarks_by_block_num(self.crawler.start_block)
                     try:
