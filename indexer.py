@@ -276,6 +276,7 @@ class Indexer:
                     except Exception as e:
                         continue
             except (ConnectionError, SubstrateRequestException, WebSocketConnectionClosedException, WebSocketTimeoutException) as e:
+                # 这里可能需要重新new一个substrate
                 print("连接断开，正在连接。。。。")
                 continue
 
