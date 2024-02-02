@@ -113,12 +113,13 @@ class Indexer:
                 extrinsic_index = remark["extrinsic_index"]
         return res
 
-    def _classify_remarks(self, remarks: list[dict]) -> (Dict[str, list], list):
+    def _classify_remarks(self, remarks: list[dict]) -> (Dict[str, list], list[dict], list[dict]):
         unique_user: Dict[str, list[str]] = {}
         mint_remarks: Dict[str, list[dict]] = {}
         extrinsic_index = 0 if len(remarks) == 0 else remarks[0]["extrinsic_index"]
         res = []
         rs = []
+        deploy_remarks = []
         for remark_id, remark in enumerate(remarks):
             if extrinsic_index == remark["extrinsic_index"]:
                 rs.append(remark)
@@ -140,12 +141,30 @@ class Indexer:
                         else:
                             print(f"用户 {user} 在本区块中已经提交mint")
                         rs = []
+                    if memo.get("op") == "deploy":
+                        deploy_remarks.append(remark)
+                        rs = []
                 extrinsic_index = remark["extrinsic_index"]
                 res.extend(rs)
                 rs = []
         print("分类后的mint交易为:", mint_remarks)
+        print("分类后的deploy交易为:", deploy_remarks)
         print("分类后的其他交易为:", res)
-        return mint_remarks, res
+        return mint_remarks, deploy_remarks, res,
+
+    def _do_deploy(self, deploy_remarks: list[dict]):
+        print("deploy_remarks: ", deploy_remarks)
+        for item in deploy_remarks:
+            try:
+                with self.db.session.begin():
+                    memo = item["memo"]
+                    if memo.get("op") != "deploy":
+                        raise Exception(f"{memo} 非法进入不属于自己的代码块")
+                    self.dot20.deploy(**item)
+                self.db.session.commit()
+            except SQLAlchemyError as e:
+                print(f"deploy: {item}操作失败：{e}")
+                raise e
 
     def _do_mint(self, remarks_dict: Dict[str, list]):
         print("mint_remarks: ", remarks_dict)
@@ -197,9 +216,13 @@ class Indexer:
                                         b_m = b["memo"]
                                         b["memo"] = json.dumps(b_m)
                                         if b_m.get("op") == "deploy":
-                                            self.dot20.deploy(**b)
-                                        elif b_m.get("op") == "mint":
+                                            raise Exception(f"部署操作非法进入不属于自己的代码块: {b}")
+                                            # self.dot20.deploy(**b)
+                                        elif b_m.get("op") == "mint" and self.ticks_mode.get(b_m.get("tick")) == self.owner_mode:
                                             self.dot20.mint(**b)
+                                        elif b_m.get("op") == "mint" and self.ticks_mode.get(b_m.get("tick")) != self.owner_mode:
+                                            raise Exception(f"普通mint操作非法进入不属于自己的代码块: {b}")
+                                            # self.dot20.mint(**b)
                                         elif b_m.get("op") == "transfer":
                                             self.dot20.transfer(**b)
                                         elif b_m.get("op") == "approve":
@@ -207,7 +230,8 @@ class Indexer:
                                         elif b_m.get("op") == "transferFrom":
                                             self.dot20.transferFrom(**b)
                                         else:
-                                            print(f"不支持的op操作: {b}")
+                                            raise Exception(f"不支持的op操作: {b}")
+                                            # print(f"不支持的op操作: {b}")
                                     except Exception as e:
                                         print(f"{b}操作失败：{e}")
                                         raise e
@@ -224,9 +248,11 @@ class Indexer:
     # 匹配dot20 然后选择操作执行 这个方法在batch里
     def _execute_remarks_by_per_batchall(self, remaks: list[dict]):
         base_filter_res = self._base_filter_remarks(remaks)
-        mint_remarks, other_remarks = self._classify_remarks(base_filter_res)
+        mint_remarks, deploy_remarks, other_remarks = self._classify_remarks(base_filter_res)
+
         try:
             self.db.session.commit()
+            self._do_deploy(deploy_remarks)
             with self.db.session.begin():
                 self._do_mint(mint_remarks)
                 self._do_other_ops(other_remarks)
