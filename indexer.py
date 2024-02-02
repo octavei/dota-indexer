@@ -38,7 +38,8 @@ class Indexer:
         extrinsic_index = 0 if len(remarks) == 0 else remarks[0]["extrinsic_index"]
         for remark_id, remark in enumerate(remarks):
             if remark["memo"].get("tick") is not None and isinstance(remark["memo"].get("tick"), str):
-                remark["memo"]["tick"] = str(remark["memo"].get("tick")).lower()
+                # ascii防特殊字符攻击
+                remark["memo"]["tick"] = ascii(remark["memo"].get("tick")).lower()
 
             if remark["extrinsic_index"] == extrinsic_index:
                 es.append(remark)
