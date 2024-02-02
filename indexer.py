@@ -152,25 +152,27 @@ class Indexer:
         for item, value in remarks_dict.items():
             # try:
                 deploy_info = self.db.get_deploy_info(item)
-                if deploy_info is None:
+                if len(deploy_info) == 0:
                     raise Exception(f"{item}还没有部署")
+                print("deploy_info: ", deploy_info)
                 mode = deploy_info[0][11]
                 av_amt = 0
-                if mode == "fair":
+                if mode == self.fair_mode:
                     amt = deploy_info[0][12]
                     av_amt = int(amt) / len(value)
                 for v_id, v in enumerate(value):
                     try:
                         with self.db.session.begin_nested():
                             memo = v["memo"]
-                            if mode == "fair":
+                            if mode == self.fair_mode:
                                 memo["lim"] = av_amt
                             print("mint memo:", memo)
                             v["memo"] = json.dumps(memo)
                             self.dot20.mint(**v)
 
-                    except Exception as e:
+                    except SQLAlchemyError as e:
                         print(f"mint: {v}操作失败：{e}")
+                        raise e
 
     def _do_other_ops(self, remarks: list[dict]):
         es = []
@@ -209,9 +211,9 @@ class Indexer:
                                     except Exception as e:
                                         print(f"{b}操作失败：{e}")
                                         raise e
-                        except Exception as e:
+                        except SQLAlchemyError as e:
                             print(f"批量操作: {bs}, 执行失败 {e}")
-                            # raise e
+                            raise e
 
                         print(f"待执行的非mint交易: \n {bs}")
                         bs = []
@@ -260,6 +262,11 @@ if __name__ == "__main__":
     )
     db_url = 'mysql+mysqlconnector://root:116000@localhost/wjy'
     db = DotaDB(db_url=db_url)
+    # 删除整个表结构
+    # db.drop_all_tick_table("dota")
+    # 删除表中数据
+    # db.delete_all_tick_table("dota")
+    db.session.commit()
     status = db.get_indexer_status("dot-20")
     print("status: ", status)
     start = 362153
@@ -267,14 +274,8 @@ if __name__ == "__main__":
     print(f"开始的区块是: {start_block}")
     delay = 2
     crawler = RemarkCrawler(substrate, delay, start_block)
-    # 删除整个表结构
-    # db.drop_all_tick_table("dota")
-    # 删除表中数据
-    # db.delete_all_tick_table("dota")
     indexer = Indexer(db, crawler)
     indexer.run()
-    # crawler.crawl()
-    pass
 
 
 
