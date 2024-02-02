@@ -17,7 +17,7 @@ class Indexer:
         self.db = db
         self.crawler = crawler
         self.dot20 = Dot20(db, self.crawler.substrate.ss58_format)
-        self.supported_ticks = ["dota", "dddd"]
+        self.supported_ticks = ["dota", "dddd", "idot"]
         # 支持的操作
         self.supported_ops = ["deploy", "mint", "transfer", "transferFrom", "approve", "memo"]
         self.fair_mode = "fair"
