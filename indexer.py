@@ -46,7 +46,7 @@ class Indexer:
                     if btach_all_index != r["batchall_index"] or i == len(es) - 1:
                         print("正在处理 第 {} 个batchall".format(btach_all_index))
                         print("bs:", bs)
-
+                        # bs_cp = bs.copy()
                         is_vail_mint_or_deploy = True
                         for b_i, b in enumerate(bs):
                             memo = b["memo"]
@@ -58,6 +58,14 @@ class Indexer:
                                 else:
                                     self.ticks_mode[memo.get("tick")] = deploy_info.get("mode")
 
+                            # tick和op不规范 直接退出
+                            if memo.get("tick") not in self.supported_ticks or memo.get(
+                                    "op") not in self.supported_ops:
+                                print(memo.get("tick"), memo.get(
+                                    "op"))
+                                print("非法op和tick， 抛弃整个batchall")
+                                break
+
                             # 普通mint和deploy在一个交易中只能有一个 并且不能批量
                             if (memo.get("op") == "mint" and self.ticks_mode.get(memo.get("tick")) != self.owner_mode) or \
                                     memo.get("op") == "deploy":
@@ -66,26 +74,32 @@ class Indexer:
                                     print("非法的普通mint和deploy， 抛弃整个交易")
                                     break
 
-                            if memo.get("op") == "memo":
+                            try:
+                                b_cp = b.copy()
+                                b_cp["memo"] = json.dumps(b["memo"])
+                                self.dot20.fmt_json_data(memo.get("op"), **b_cp)
+                            except Exception as e:
+                                print(f"json {b} 错误 err: {e}")
+                                break
+
+                            if memo.get("op") == "memo" and len(bs) > 1:
                                 if b_i != len(bs) - 1:
                                     print(b_i, len(bs) - 1)
                                     print("memo不在最后位置， 抛弃整个batchall")
                                     break
-                            # tick和op不规范 直接退出
+                                # 合法memo字段
+                                else:
+                                    # 获取op为memo的text字段
+                                    memo_remark = bs[-1]["text"]
+                                    # for i in range(len(bs) - 1):
+                                    bs[0]["memo_remark"] = memo_remark
+                                    bs = bs[:-1]
+                            elif memo.get("op") == "memo" and len(bs) == 1:
+                                print("只有一个memo字段， 抛弃整个batchall")
+                                break
                             else:
-                                if memo.get("tick") not in self.supported_ticks or memo.get(
-                                        "op") not in self.supported_ops:
-                                    print(memo.get("tick"), memo.get(
-                                        "op"))
-                                    print("非法op和tick， 抛弃整个batchall")
-                                    break
-                                try:
-                                    b_cp = b.copy()
-                                    b_cp["memo"] = json.dumps(b["memo"])
-                                    self.dot20.fmt_json_data(memo.get("op"), **b_cp)
-                                except Exception as e:
-                                    print(f"json {b} 错误 err: {e}")
-                                    break
+                                pass
+
                         else:
                             print(f"batchall过滤成功 :{bs}")
                             res.extend(bs)
@@ -190,7 +204,7 @@ class Indexer:
                                         elif b_m.get("op") == "transferFrom":
                                             self.dot20.transferFrom(**b)
                                         else:
-                                            print("不支持的op操作")
+                                            print(f"不支持的op操作: {b}")
                                     except Exception as e:
                                         print(f"{b}操作失败：{e}")
                                         raise e
