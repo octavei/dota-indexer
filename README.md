@@ -12,7 +12,7 @@ source myenv/bin/activate
 ```angular2html
 pip install -r requirements.txt
 ```
-# 运行爬虫
+# 运行索引器
 ```angular2html
 python indexer.py
 ```
