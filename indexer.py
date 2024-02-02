@@ -246,12 +246,16 @@ if __name__ == "__main__":
     db_url = 'mysql+mysqlconnector://root:116000@localhost/wjy'
     db = DotaDB(db_url=db_url)
     status = db.get_indexer_status("dot-20")
+    print("status: ", status)
     start = 362153
-    start_block = start if status is None else status[0][1]
+    start_block = start if status is None else status[1]
+    print(f"开始的区块是: {start_block}")
     delay = 2
     crawler = RemarkCrawler(substrate, delay, start_block)
-
+    # 删除整个表结构
     # db.drop_all_tick_table("dota")
+    # 删除表中数据
+    # db.delete_all_tick_table("dota")
     indexer = Indexer(db, crawler)
     indexer.run()
     # crawler.crawl()
