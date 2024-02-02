@@ -238,21 +238,22 @@ class Indexer:
 
     def run(self):
         while True:
-            latest_block_hash = self.crawler.substrate.get_chain_finalised_head()
-            latest_block_num = self.crawler.substrate.get_block_number(latest_block_hash)
-            if self.crawler.start_block + self.crawler.delay <= latest_block_num:
-                print(f"开始爬取区块高度为#{self.crawler.start_block}的extrinsics")
-                try:
+            try:
+                latest_block_hash = self.crawler.substrate.get_chain_finalised_head()
+                latest_block_num = self.crawler.substrate.get_block_number(latest_block_hash)
+                if self.crawler.start_block + self.crawler.delay <= latest_block_num:
+                    print(f"开始爬取区块高度为#{self.crawler.start_block}的extrinsics")
+                    # try:
                     remarks = self.crawler.get_dota_remarks_by_block_num(self.crawler.start_block)
-                except (ConnectionError, SubstrateRequestException, WebSocketConnectionClosedException, WebSocketTimeoutException) as e:
-                    print("连接断开，正在连接。。。。")
-                    continue
-                try:
-                    self._execute_remarks_by_per_batchall(remarks)
-                except Exception as e:
-                    continue
+                    try:
+                        self._execute_remarks_by_per_batchall(remarks)
+                    except Exception as e:
+                        continue
+            except (ConnectionError, SubstrateRequestException, WebSocketConnectionClosedException, WebSocketTimeoutException) as e:
+                print("连接断开，正在连接。。。。")
+                continue
 
-                self.crawler.start_block += 1
+            self.crawler.start_block += 1
 
 
 if __name__ == "__main__":
