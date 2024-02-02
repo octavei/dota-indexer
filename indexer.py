@@ -209,10 +209,12 @@ class Indexer:
         base_filter_res = self._base_filter_remarks(remaks)
         mint_remarks, other_remarks = self._classify_remarks(base_filter_res)
         try:
+            self.db.session.commit()
             with self.db.session.begin():
-                    self._do_mint(mint_remarks)
-                    self._do_other_ops(other_remarks)
-                    self.db.insert_or_update_indexer_status({"p": "dot-20", "indexer_height": self.crawler.start_block, "crawler_height": self.crawler.start_block})
+                self._do_mint(mint_remarks)
+                self._do_other_ops(other_remarks)
+                self.db.insert_or_update_indexer_status({"p": "dot-20", "indexer_height": self.crawler.start_block, "crawler_height": self.crawler.start_block})
+            self.db.session.commit()
         except Exception as e:
             print(f"整个区块的交易执行失败：{e}")
             raise e
@@ -241,14 +243,14 @@ if __name__ == "__main__":
     substrate = SubstrateInterface(
         url=url,
     )
-    db = DotaDB(url)
+    db_url = 'mysql+mysqlconnector://root:116000@localhost/wjy'
+    db = DotaDB(db_url=db_url)
     status = db.get_indexer_status("dot-20")
     start = 362153
     start_block = start if status is None else status[0][1]
     delay = 2
     crawler = RemarkCrawler(substrate, delay, start_block)
-    url = 'mysql+mysqlconnector://root:116000@localhost/wjy'
-    db = DotaDB(url)
+
     # db.drop_all_tick_table("dota")
     indexer = Indexer(db, crawler)
     indexer.run()
