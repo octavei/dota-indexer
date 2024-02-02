@@ -168,7 +168,8 @@ class Indexer:
                     memo = item["memo"]
                     if memo.get("op") != self.deploy_op:
                         raise Exception(f"{memo} 非法进入不属于自己的代码块")
-                    self.dot20.deploy(**item)
+                    tick = self.dot20.deploy(**item)
+                    self.db.create_tables_for_new_tick(tick)
                 self.db.session.commit()
             except SQLAlchemyError as e:
                 print(f"deploy: {item}操作失败：{e}")
