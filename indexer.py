@@ -6,6 +6,7 @@ from dot20.dot20 import Dot20
 from substrateinterface import SubstrateInterface
 from substrateinterface.exceptions import SubstrateRequestException
 from typing import Dict
+from sqlalchemy.exc import SQLAlchemyError
 
 
 # 索引器
@@ -14,22 +15,19 @@ class Indexer:
     def __init__(self, db: DotaDB, crawler: RemarkCrawler):
         self.db = db
         self.crawler = crawler
-        # 在这里直接创建
-        # fixme 协议里面对json内容做最基本的过滤
         self.dot20 = Dot20(db, self.crawler.substrate.ss58_format)
-        # self.start_block = start_block
-        # 支持的ticks 未来投票
         self.supported_ticks = ["dota", "dddd"]
         # 支持的操作
         self.supported_ops = ["deploy", "mint", "transfer", "transferFrom", "approve", "memo"]
-        self.owner_ticks = set("iDOT")
-        # fixme 某个tick是不是owner
+        self.fair_mode = "fair"
+        self.owner_mode = "owner"
+        self.normal_mode = "normal"
+        self.ticks_mode = {"dota": self.fair_mode}
 
     def _base_filter_remarks(self, remarks: list[dict]) -> list[dict]:
         res = []
-        extrinsic_index = 0 if len(remarks) == 0 else remarks[0]["extrinsic_index"]
         es = []
-
+        extrinsic_index = 0 if len(remarks) == 0 else remarks[0]["extrinsic_index"]
         for remark_id, remark in enumerate(remarks):
             if remark["memo"].get("tick") is not None and isinstance(remark["memo"].get("tick"), str):
                 remark["memo"]["tick"] = str(remark["memo"].get("tick")).lower()
@@ -41,7 +39,6 @@ class Indexer:
                 print("正在处理区块高度 {} 的第 {} 个交易".format(remark["block_num"], extrinsic_index))
                 bs = []
                 btach_all_index = 0 if len(es) == 0 else es[0]["batchall_index"]
-                print("es:", es)
                 for i, r in enumerate(es):
                     if btach_all_index == r["batchall_index"]:
                         bs.append(r)
@@ -53,9 +50,16 @@ class Indexer:
                         is_vail_mint_or_deploy = True
                         for b_i, b in enumerate(bs):
                             memo = b["memo"]
+                            if self.ticks_mode.get(memo.get("tick")) is None:
+                                deploy_info = self.dot20.get_deploy_info(memo.get("tick"))
+                                if deploy_info is None:
+                                    print(f"{memo.get('tick')} 还没有部署")
+                                    # break
+                                else:
+                                    self.ticks_mode[memo.get("tick")] = deploy_info.get("mode")
 
                             # 普通mint和deploy在一个交易中只能有一个 并且不能批量
-                            if (memo.get("op") == "mint" and memo.get("tick") not in list(self.owner_ticks)) or \
+                            if (memo.get("op") == "mint" and self.ticks_mode.get(memo.get("tick")) != self.owner_mode) or \
                                     memo.get("op") == "deploy":
                                 if len(es) > 1:
                                     is_vail_mint_or_deploy = False
@@ -75,10 +79,10 @@ class Indexer:
                                         "op"))
                                     print("非法op和tick， 抛弃整个batchall")
                                     break
-                                # if memo.get("op") == "memo":
                                 try:
-                                    b["memo"] = json.dumps(b["memo"])
-                                    self.dot20.fmt_json_data(memo.get("op"), **b)
+                                    b_cp = b.copy()
+                                    b_cp["memo"] = json.dumps(b["memo"])
+                                    self.dot20.fmt_json_data(memo.get("op"), **b_cp)
                                 except Exception as e:
                                     print(f"json {b} 错误 err: {e}")
                                     break
@@ -87,9 +91,8 @@ class Indexer:
                             res.extend(bs)
                         bs = []
                         btach_all_index = r["batchall_index"]
-                        # 如果batchall中有非法的mint和deploy 那么结束整个交易
                         if is_vail_mint_or_deploy is False:
-                            print("非法交易")
+                            print("非法mint交易")
                             break
                 es = []
                 extrinsic_index = remark["extrinsic_index"]
@@ -112,10 +115,10 @@ class Indexer:
                     # 每个用户只能发一笔
                     user = rs[0].get("origin")
                     tick = str(memo.get("tick"))
-                    if memo.get("op") == "mint" and memo.get("tick") not in list(self.owner_ticks):
+                    if memo.get("op") == "mint" and self.ticks_mode.get(memo.get("tick")) != self.owner_mode:
                         vail_mint_user = unique_user.get(tick) if unique_user.get(tick) is not None else []
                         if user not in vail_mint_user:
-                            print(f"分类到合法mint ： {remark}")
+                            print(f"分类得到合法mint ： {remark}")
                             mint_remarks[tick] = [remark] if mint_remarks.get(tick) is None else \
                                 mint_remarks[tick].append(remark)
                             unique_user[tick] = vail_mint_user.append(user)
@@ -132,21 +135,28 @@ class Indexer:
     def _do_mint(self, remarks_dict: Dict[str, list]):
         print("mint_remarks: ", remarks_dict)
         for item, value in remarks_dict.items():
-            deploy_info = self.db.get_deploy_info(item)
-            if deploy_info is None:
-                raise Exception(f"{item}还没有部署")
-            mode = deploy_info[0][11]
-            av_amt = 0
-            if mode == "fair":
-                amt = deploy_info[0][12]
-                av_amt = amt / len(value)
-            for v_id, v in enumerate(value):
-                memo = v["memo"]
+            # try:
+                deploy_info = self.db.get_deploy_info(item)
+                if deploy_info is None:
+                    raise Exception(f"{item}还没有部署")
+                mode = deploy_info[0][11]
+                av_amt = 0
                 if mode == "fair":
-                    memo["lim"] = av_amt
-                # fixme 确定提交方式
-                v[memo] = json.dumps(memo)
-                self.dot20.mint(**v)
+                    amt = deploy_info[0][12]
+                    av_amt = int(amt) / len(value)
+                for v_id, v in enumerate(value):
+                    try:
+                        with self.db.session.begin_nested():
+                            memo = v["memo"]
+                            if mode == "fair":
+                                memo["lim"] = av_amt
+                            # fixme 确定提交方式
+                            print("mint memo:", memo)
+                            v["memo"] = json.dumps(memo)
+                            self.dot20.mint(**v)
+
+                    except Exception as e:
+                        print(f"mint: {v}操作失败：{e}")
 
     def _do_other_ops(self, remarks: list[dict]):
         es = []
@@ -157,7 +167,6 @@ class Indexer:
                 print(remark_id, remark)
                 es.append(remark)
             if extrinsic_index != remark["extrinsic_index"] or remark_id == len(remarks) - 1:
-                print("hahahah:", es)
                 batchall_index = 0 if len(es) == 0 else es[0]["batchall_index"]
                 bs = []
                 for b_id, b in enumerate(es):
@@ -165,22 +174,30 @@ class Indexer:
                         bs.append(b)
 
                     if batchall_index != b["batchall_index"] or b_id == len(es) - 1:
-                        # todo 以batchall作为单位去批量原子执行
-                        for b in bs:
-                            b_m = b["memo"]
-                            b["memo"] = json.dumps(b_m)
-                            if b_m.get("op") == "deploy":
-                                self.dot20.deploy(**b)
-                            elif b_m.get("op") == "mint":
-                                self.dot20.mint(**b)
-                            elif b_m.get("op") == "transfer":
-                                self.dot20.transfer(**b)
-                            elif b_m.get("op") == "approve":
-                                self.dot20.approve(**b)
-                            elif b_m.get("op") == "transferFrom":
-                                self.dot20.transferFrom(**b)
-                            else:
-                                print("不支持的op操作")
+                        try:
+                            with self.db.session.begin_nested():
+                                for b in bs:
+                                    try:
+                                        b_m = b["memo"]
+                                        b["memo"] = json.dumps(b_m)
+                                        if b_m.get("op") == "deploy":
+                                            self.dot20.deploy(**b)
+                                        elif b_m.get("op") == "mint":
+                                            self.dot20.mint(**b)
+                                        elif b_m.get("op") == "transfer":
+                                            self.dot20.transfer(**b)
+                                        elif b_m.get("op") == "approve":
+                                            self.dot20.approve(**b)
+                                        elif b_m.get("op") == "transferFrom":
+                                            self.dot20.transferFrom(**b)
+                                        else:
+                                            print("不支持的op操作")
+                                    except Exception as e:
+                                        print(f"{b}操作失败：{e}")
+                                        raise e
+                        except Exception as e:
+                            print(f"批量操作: {bs}, 执行失败 {e}")
+                            # raise e
 
                         print(f"待执行的非mint交易: \n {bs}")
                         bs = []
@@ -192,8 +209,14 @@ class Indexer:
     def _execute_remarks_by_per_batchall(self, remaks: list[dict]):
         base_filter_res = self._base_filter_remarks(remaks)
         mint_remarks, other_remarks = self._classify_remarks(base_filter_res)
-        self._do_mint(mint_remarks)
-        self._do_other_ops(other_remarks)
+        try:
+            with self.db.session.begin():
+                    self._do_mint(mint_remarks)
+                    self._do_other_ops(other_remarks)
+                    self.db.insert_or_update_indexer_status({"p": "dot-20", "indexer_height": self.crawler.start_block, "crawler_height": self.crawler.start_block})
+        except Exception as e:
+            print(f"整个区块的交易执行失败：{e}")
+            raise e
 
     def run(self):
         while True:
@@ -206,8 +229,11 @@ class Indexer:
                 except (ConnectionError, SubstrateRequestException) as e:
                     print("连接断开，正在连接。。。。")
                     continue
-                self._execute_remarks_by_per_batchall(remarks)
-                # todo 标记高度状态
+                try:
+                    self._execute_remarks_by_per_batchall(remarks)
+                except Exception as e:
+                    continue
+
                 self.crawler.start_block += 1
 
 
@@ -216,9 +242,12 @@ if __name__ == "__main__":
     substrate = SubstrateInterface(
         url=url,
     )
+    db = DotaDB(url)
+    status = db.get_indexer_status("dot-20")
+    start = 362153
+    start_block = start if status is None else status[0][1]
     delay = 2
-    # todo 查询高度
-    crawler = RemarkCrawler(substrate, delay, 361823)
+    crawler = RemarkCrawler(substrate, delay, start_block)
     url = 'mysql+mysqlconnector://root:116000@localhost/wjy'
     db = DotaDB(url)
     # db.drop_all_tick_table("dota")
