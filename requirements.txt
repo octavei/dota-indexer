@@ -7,7 +7,7 @@ cytoolz==0.12.2
 docopt==0.6.2
 dot20 @ git+https://github.com/octavei/dot-20.git@1c9e7028c1c74234aa59fd13815521b9d8379d6e
 dotacrawler @ git+https://github.com/octavei/dota-indexer-crawler.git@de4b2d17da9c7b4da04efbaae317d568424cb3ea
-dotadb @ git+https://github.com/octavei/dota-indexer-db.git@5b757acaa995d94b23181b8b10bea36d7a0579ef
+dotadb @ git+https://github.com/octavei/dota-indexer-db.git@1643d1d4b2f4fc54634c384d911eb9de8a2aff65
 ecdsa==0.18.0
 eth-hash==0.6.0
 eth-keys==0.5.0
