@@ -269,7 +269,7 @@ if __name__ == "__main__":
     db.session.commit()
     status = db.get_indexer_status("dot-20")
     print("status: ", status)
-    start = 362153
+    start = 375404
     start_block = start if status is None else status[1]
     print(f"开始的区块是: {start_block}")
     delay = 2
