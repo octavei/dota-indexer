@@ -6,6 +6,7 @@ from dot20.dot20 import Dot20
 from substrateinterface import SubstrateInterface
 from substrateinterface.exceptions import SubstrateRequestException
 from typing import Dict
+from websocket import WebSocketConnectionClosedException, WebSocketTimeoutException
 from sqlalchemy.exc import SQLAlchemyError
 
 
@@ -241,7 +242,7 @@ class Indexer:
                 print(f"开始爬取区块高度为#{self.crawler.start_block}的extrinsics")
                 try:
                     remarks = self.crawler.get_dota_remarks_by_block_num(self.crawler.start_block)
-                except (ConnectionError, SubstrateRequestException) as e:
+                except (ConnectionError, SubstrateRequestException, WebSocketConnectionClosedException, WebSocketTimeoutException) as e:
                     print("连接断开，正在连接。。。。")
                     continue
                 try:
