@@ -150,7 +150,6 @@ class Indexer:
                             memo = v["memo"]
                             if mode == "fair":
                                 memo["lim"] = av_amt
-                            # fixme 确定提交方式
                             print("mint memo:", memo)
                             v["memo"] = json.dumps(memo)
                             self.dot20.mint(**v)

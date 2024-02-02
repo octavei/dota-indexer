@@ -5,7 +5,7 @@ cffi==1.16.0
 charset-normalizer==3.3.2
 cytoolz==0.12.2
 docopt==0.6.2
-dot20 @ git+https://github.com/octavei/dot-20.git@a21c2856881eb15e8eb75fadd9cc95a58e56f82d
+dot20 @ git+https://github.com/octavei/dot-20.git@a5e32bad882132bc8320de363469a1bcb0a8497b
 dotacrawler @ git+https://github.com/octavei/dota-indexer-crawler.git@2e57c891cd07afbbb726d24f965d53d57870c51d
 dotadb @ git+https://github.com/octavei/dota-indexer-db.git@4d9f1cb88055bb8f7c951b8664626fbf77725578
 ecdsa==0.18.0
