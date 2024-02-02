@@ -19,7 +19,14 @@ class Indexer:
         self.dot20 = Dot20(db, self.crawler.substrate.ss58_format)
         self.supported_ticks = ["dota", "dddd", "idot"]
         # 支持的操作
-        self.supported_ops = ["deploy", "mint", "transfer", "transferFrom", "approve", "memo"]
+        self.deploy_op = "deploy"
+        self.mint_op = "mint"
+        self.transfer_op = "transfer"
+        self.transfer_from_op = "transferFrom"
+        self.approve_op = "approve"
+        self.memo_op = "memo"
+        self.supported_ops = [self.deploy_op, self.mint_op, self.transfer_op, self.transfer_from_op, self.approve_op, self.memo_op]
+        # mint 模式
         self.fair_mode = "fair"
         self.owner_mode = "owner"
         self.normal_mode = "normal"
@@ -68,8 +75,8 @@ class Indexer:
                                 break
 
                             # 普通mint和deploy在一个交易中只能有一个 并且不能批量
-                            if (memo.get("op") == "mint" and self.ticks_mode.get(memo.get("tick")) != self.owner_mode) or \
-                                    memo.get("op") == "deploy":
+                            if (memo.get("op") == self.memo_op and self.ticks_mode.get(memo.get("tick")) != self.owner_mode) or \
+                                    memo.get("op") == self.deploy_op:
                                 if len(es) > 1:
                                     is_vail_mint_or_deploy = False
                                     print("非法的普通mint和deploy， 抛弃整个交易")
@@ -95,7 +102,7 @@ class Indexer:
                                     # for i in range(len(bs) - 1):
                                     bs[0]["memo_remark"] = memo_remark
                                     bs = bs[:-1]
-                            elif memo.get("op") == "memo" and len(bs) == 1:
+                            elif memo.get("op") == self.memo_op and len(bs) == 1:
                                 print("只有一个memo字段， 抛弃整个batchall")
                                 break
                             else:
@@ -131,7 +138,7 @@ class Indexer:
                     # 每个用户只能发一笔
                     user = rs[0].get("origin")
                     tick = str(memo.get("tick"))
-                    if memo.get("op") == "mint" and self.ticks_mode.get(memo.get("tick")) != self.owner_mode:
+                    if memo.get("op") == self.mint_op and self.ticks_mode.get(memo.get("tick")) != self.owner_mode:
                         vail_mint_user = unique_user.get(tick) if unique_user.get(tick) is not None else []
                         if user not in vail_mint_user:
                             print(f"分类得到合法mint ： {remark}")
@@ -141,7 +148,7 @@ class Indexer:
                         else:
                             print(f"用户 {user} 在本区块中已经提交mint")
                         rs = []
-                    if memo.get("op") == "deploy":
+                    if memo.get("op") == self.deploy_op:
                         deploy_remarks.append(remark)
                         rs = []
                 extrinsic_index = remark["extrinsic_index"]
@@ -158,7 +165,7 @@ class Indexer:
             try:
                 with self.db.session.begin():
                     memo = item["memo"]
-                    if memo.get("op") != "deploy":
+                    if memo.get("op") != self.deploy_op:
                         raise Exception(f"{memo} 非法进入不属于自己的代码块")
                     self.dot20.deploy(**item)
                 self.db.session.commit()
@@ -215,19 +222,19 @@ class Indexer:
                                     try:
                                         b_m = b["memo"]
                                         b["memo"] = json.dumps(b_m)
-                                        if b_m.get("op") == "deploy":
+                                        if b_m.get("op") == self.deploy_op:
                                             raise Exception(f"部署操作非法进入不属于自己的代码块: {b}")
                                             # self.dot20.deploy(**b)
-                                        elif b_m.get("op") == "mint" and self.ticks_mode.get(b_m.get("tick")) == self.owner_mode:
+                                        elif b_m.get("op") == self.mint_op and self.ticks_mode.get(b_m.get("tick")) == self.owner_mode:
                                             self.dot20.mint(**b)
-                                        elif b_m.get("op") == "mint" and self.ticks_mode.get(b_m.get("tick")) != self.owner_mode:
+                                        elif b_m.get("op") == self.mint_op and self.ticks_mode.get(b_m.get("tick")) != self.owner_mode:
                                             raise Exception(f"普通mint操作非法进入不属于自己的代码块: {b}")
                                             # self.dot20.mint(**b)
-                                        elif b_m.get("op") == "transfer":
+                                        elif b_m.get("op") == self.transfer_op:
                                             self.dot20.transfer(**b)
-                                        elif b_m.get("op") == "approve":
+                                        elif b_m.get("op") == self.approve_op:
                                             self.dot20.approve(**b)
-                                        elif b_m.get("op") == "transferFrom":
+                                        elif b_m.get("op") == self.transfer_from_op:
                                             self.dot20.transferFrom(**b)
                                         else:
                                             raise Exception(f"不支持的op操作: {b}")
