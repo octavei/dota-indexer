@@ -10,6 +10,7 @@ from websocket import WebSocketConnectionClosedException, WebSocketTimeoutExcept
 from sqlalchemy.exc import SQLAlchemyError
 from dotenv import load_dotenv
 import os
+import time
 
 load_dotenv()
 
@@ -329,29 +330,23 @@ class Indexer:
     # 3. 分类remarks
     # 4. 执行remarks操作
     def run(self):
-        while True:
             try:
                 latest_block_hash = self.crawler.substrate.get_chain_finalised_head()
                 latest_block_num = self.crawler.substrate.get_block_number(latest_block_hash)
                 if self.crawler.start_block + self.crawler.delay <= latest_block_num:
                     print(f"开始爬取区块高度为#{self.crawler.start_block} 的extrinsics")
-                    # try:
                     remarks = self.crawler.get_dota_remarks_by_block_num(self.crawler.start_block)
-                    try:
-                        self._execute_remarks_by_per_batchall(remarks)
-                    except Exception as e:
-                        continue
+                    self._execute_remarks_by_per_batchall(remarks)
+                    self.crawler.start_block += 1
             except (ConnectionError, SubstrateRequestException, WebSocketConnectionClosedException,
                     WebSocketTimeoutException) as e:
-                # 这里可能需要重新new一个substrate
                 print("连接断开，正在连接。。。。")
                 try:
                     self.crawler.substrate = connect_substrate()
                 except Exception as e:
                     print(f"连接失败 {e}，正在重试。。。")
-                continue
-
-            self.crawler.start_block += 1
+                time.sleep(3)
+            return self.run()
 
 
 if __name__ == "__main__":
