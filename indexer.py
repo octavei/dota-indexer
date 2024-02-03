@@ -26,7 +26,9 @@ def connect_substrate() -> SubstrateInterface:
         if substrate.chain != os.getenv("CHAIN"):
             raise Exception(f"连接的节点不是{os.getenv('CHAIN')}")
     except Exception as e:
-        raise e
+        print(f"连接失败 {e}，正在重试。。。")
+        time.sleep(3)
+        return connect_substrate()
     return substrate
 
 
