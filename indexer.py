@@ -32,6 +32,12 @@ class Indexer:
         self.normal_mode = "normal"
         self.ticks_mode = {"dota": self.fair_mode}
 
+    # 过滤在crawler中获得的p为dot20的remarks
+    # 1. 过滤掉不合法的op和tick（不在支持的op和tick中）
+    # 2. mint（normal和fair模式)和deploy在一个交易中只能有一个 并且不能批量 并且不能包含其他op
+    # 3. memo字段必须在最后一个
+    # 4. json字段必须合法
+    # 5. tick字段必须用ascii表示
     def _base_filter_remarks(self, remarks: list[dict]) -> list[dict]:
         res = []
         es = []
@@ -121,6 +127,11 @@ class Indexer:
                 extrinsic_index = remark["extrinsic_index"]
         return res
 
+    # 对remarks进行基本的分类
+    # 1. 分类出合法的mint（normal、fair模式）remarks
+    # 2. 分类出合法的deploy remarks
+    # 3. 分类出其他remarks
+    # 4. 一个区块中，一个人只能提交一笔mint(fair和normal模式) remark（不管是不是代理或者多签)
     def _classify_remarks(self, remarks: list[dict]) -> (Dict[str, list], list[dict], list[dict]):
         unique_user: Dict[str, list[str]] = {}
         mint_remarks: Dict[str, list[dict]] = {}
@@ -160,6 +171,9 @@ class Indexer:
         print("分类后的其他交易为:", res)
         return mint_remarks, deploy_remarks, res,
 
+    # 执行deploy操作
+    # 1. deploy优先执行，因为同一个事务中的deploy操作会产生新表，不能跟其他操作一起
+    # 2. deploy操作一个一个执行（不会批量），直到全部执行完
     def _do_deploy(self, deploy_remarks: list[dict]):
         print("deploy_remarks: ", deploy_remarks)
         for item in deploy_remarks:
@@ -175,6 +189,10 @@ class Indexer:
                 print(f"deploy: {item}操作失败：{e}")
                 raise e
 
+    # 执行mint（fair、normal）操作
+    # 1. 如果是fair模式，会计算平均值
+    # 2. mint操作有非sql失败，直接continue
+    # 3. mint操作有sql失败，直接break（并且所有操作回滚)
     def _do_mint(self, remarks_dict: Dict[str, list]):
         print("mint_remarks: ", remarks_dict)
         for item, value in remarks_dict.items():
@@ -202,6 +220,9 @@ class Indexer:
                         print(f"mint: {v}操作失败：{e}")
                         raise e
 
+    # 执行其他操作
+    # 1. 其他操作包括：transfer, transferFrom, approve, mint（owner）
+    # 2. 以batchall为单位，去执行。batchall内必须批量原子操作。batchall外失败会continue
     def _do_other_ops(self, remarks: list[dict]):
         es = []
         extrinsic_index = 0 if len(remarks) == 0 else remarks[0]["extrinsic_index"]
@@ -254,7 +275,13 @@ class Indexer:
                 es = []
                 extrinsic_index = remark["extrinsic_index"]
 
-    # 匹配dot20 然后选择操作执行 这个方法在batch里
+    # 执行整个区块的rremarks
+    # 1. 先过滤remarks
+    # 2. 分类remarks
+    # 3. 执行deploy操作
+    # 4. 执行mint操作
+    # 5. 执行其他操作
+    # 6. 更新indexer_status
     def _execute_remarks_by_per_batchall(self, remaks: list[dict]):
         base_filter_res = self._base_filter_remarks(remaks)
         mint_remarks, deploy_remarks, other_remarks = self._classify_remarks(base_filter_res)
@@ -271,6 +298,11 @@ class Indexer:
             print(f"整个区块的交易执行失败：{e}")
             raise e
 
+    # 运行索引器
+    # 1. 从start_block开始，每次爬取一个区块的extrinsics
+    # 2. 过滤remarks
+    # 3. 分类remarks
+    # 4. 执行remarks操作
     def run(self):
         while True:
             try:
