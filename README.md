@@ -12,6 +12,13 @@ source myenv/bin/activate
 ```angular2html
 pip install -r requirements.txt
 ```
+# 修改配置
+
+```angular2html
+cp .env.example .env
+```
+修改对应环境变量
+
 # 运行索引器
 ```angular2html
 python indexer.py

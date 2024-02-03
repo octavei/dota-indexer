@@ -8,6 +8,22 @@ from substrateinterface.exceptions import SubstrateRequestException
 from typing import Dict
 from websocket import WebSocketConnectionClosedException, WebSocketTimeoutException
 from sqlalchemy.exc import SQLAlchemyError
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+
+def connect_substrate() -> SubstrateInterface:
+    url = os.getenv("URL")
+    substrate = SubstrateInterface(
+        url=url,
+    )
+    print("连接上节点: {}".format(url))
+    print(f"chain: {substrate.chain}, format: {substrate.ss58_format}, token symbol: {substrate.token_symbol}")
+    if substrate.chain != os.getenv("CHAIN"):
+        raise Exception(f"连接的节点不是{os.getenv('CHAIN')}")
+    return substrate
 
 
 # 索引器
@@ -25,7 +41,8 @@ class Indexer:
         self.transfer_from_op = "transferFrom"
         self.approve_op = "approve"
         self.memo_op = "memo"
-        self.supported_ops = [self.deploy_op, self.mint_op, self.transfer_op, self.transfer_from_op, self.approve_op, self.memo_op]
+        self.supported_ops = [self.deploy_op, self.mint_op, self.transfer_op, self.transfer_from_op, self.approve_op,
+                              self.memo_op]
         # mint 模式
         self.fair_mode = "fair"
         self.owner_mode = "owner"
@@ -82,7 +99,8 @@ class Indexer:
                                 break
 
                             # 普通mint和deploy在一个交易中只能有一个 并且不能批量
-                            if (memo.get("op") == self.memo_op and self.ticks_mode.get(memo.get("tick")) != self.owner_mode) or \
+                            if (memo.get("op") == self.memo_op and self.ticks_mode.get(
+                                    memo.get("tick")) != self.owner_mode) or \
                                     memo.get("op") == self.deploy_op:
                                 if len(es) > 1:
                                     is_vail_mint_or_deploy = False
@@ -198,28 +216,28 @@ class Indexer:
         print("mint_remarks: ", remarks_dict)
         for item, value in remarks_dict.items():
             # try:
-                deploy_info = self.db.get_deploy_info(item)
-                if len(deploy_info) == 0:
-                    raise Exception(f"{item}还没有部署")
-                print("deploy_info: ", deploy_info)
-                mode = deploy_info[0][11]
-                av_amt = 0
-                if mode == self.fair_mode:
-                    amt = deploy_info[0][12]
-                    av_amt = int(amt) / len(value)
-                for v_id, v in enumerate(value):
-                    try:
-                        with self.db.session.begin_nested():
-                            memo = v["memo"]
-                            if mode == self.fair_mode:
-                                memo["lim"] = av_amt
-                            print("mint memo:", memo)
-                            v["memo"] = json.dumps(memo)
-                            self.dot20.mint(**v)
+            deploy_info = self.db.get_deploy_info(item)
+            if len(deploy_info) == 0:
+                raise Exception(f"{item}还没有部署")
+            print("deploy_info: ", deploy_info)
+            mode = deploy_info[0][11]
+            av_amt = 0
+            if mode == self.fair_mode:
+                amt = deploy_info[0][12]
+                av_amt = int(amt) / len(value)
+            for v_id, v in enumerate(value):
+                try:
+                    with self.db.session.begin_nested():
+                        memo = v["memo"]
+                        if mode == self.fair_mode:
+                            memo["lim"] = av_amt
+                        print("mint memo:", memo)
+                        v["memo"] = json.dumps(memo)
+                        self.dot20.mint(**v)
 
-                    except SQLAlchemyError as e:
-                        print(f"mint: {v}操作失败：{e}")
-                        raise e
+                except SQLAlchemyError as e:
+                    print(f"mint: {v}操作失败：{e}")
+                    raise e
 
     # 执行其他操作
     # 1. 其他操作包括：transfer, transferFrom, approve, mint（owner）
@@ -249,9 +267,11 @@ class Indexer:
                                         if b_m.get("op") == self.deploy_op:
                                             raise Exception(f"部署操作非法进入不属于自己的代码块: {b}")
                                             # self.dot20.deploy(**b)
-                                        elif b_m.get("op") == self.mint_op and self.ticks_mode.get(b_m.get("tick")) == self.owner_mode:
+                                        elif b_m.get("op") == self.mint_op and self.ticks_mode.get(
+                                                b_m.get("tick")) == self.owner_mode:
                                             self.dot20.mint(**b)
-                                        elif b_m.get("op") == self.mint_op and self.ticks_mode.get(b_m.get("tick")) != self.owner_mode:
+                                        elif b_m.get("op") == self.mint_op and self.ticks_mode.get(
+                                                b_m.get("tick")) != self.owner_mode:
                                             raise Exception(f"普通mint操作非法进入不属于自己的代码块: {b}")
                                             # self.dot20.mint(**b)
                                         elif b_m.get("op") == self.transfer_op:
@@ -293,7 +313,8 @@ class Indexer:
             with self.db.session.begin():
                 self._do_mint(mint_remarks)
                 self._do_other_ops(other_remarks)
-                self.db.insert_or_update_indexer_status({"p": "dot-20", "indexer_height": self.crawler.start_block, "crawler_height": self.crawler.start_block})
+                self.db.insert_or_update_indexer_status({"p": "dot-20", "indexer_height": self.crawler.start_block,
+                                                         "crawler_height": self.crawler.start_block})
             self.db.session.commit()
         except Exception as e:
             print(f"整个区块的交易执行失败：{e}")
@@ -317,20 +338,27 @@ class Indexer:
                         self._execute_remarks_by_per_batchall(remarks)
                     except Exception as e:
                         continue
-            except (ConnectionError, SubstrateRequestException, WebSocketConnectionClosedException, WebSocketTimeoutException) as e:
+            except (ConnectionError, SubstrateRequestException, WebSocketConnectionClosedException,
+                    WebSocketTimeoutException) as e:
                 # 这里可能需要重新new一个substrate
                 print("连接断开，正在连接。。。。")
+                try:
+                    self.crawler.substrate = connect_substrate()
+                except Exception as e:
+                    print(f"连接失败 {e}，正在重试。。。")
                 continue
 
             self.crawler.start_block += 1
 
 
 if __name__ == "__main__":
-    url = "wss://rect.me"
-    substrate = SubstrateInterface(
-        url=url,
-    )
-    db_url = 'mysql+mysqlconnector://root:116000@localhost/wjy'
+    substrate = connect_substrate()
+    user = os.getenv("MYSQLUSER")
+    password = os.getenv("PASSWORD")
+    host = os.getenv("HOST")
+    database = os.getenv("DATABASE")
+    db_url = f'mysql+mysqlconnector://{user}:{password}@{host}/{database}'
+    print("db_url: ", db_url)
     db = DotaDB(db_url=db_url)
     # 删除整个表结构
     # db.drop_all_tick_table("dota")
@@ -339,14 +367,11 @@ if __name__ == "__main__":
     db.session.commit()
     status = db.get_indexer_status("dot-20")
     print("status: ", status)
-    start = 375404
+    # start = 375404
+    start = os.getenv("START_BLOCK")
     start_block = start if status is None else status[1] + 1
     print(f"开始的区块是: {start_block}")
     delay = 2
     crawler = RemarkCrawler(substrate, delay, start_block)
     indexer = Indexer(db, crawler)
     indexer.run()
-
-
-
-
