@@ -15,14 +15,17 @@ load_dotenv()
 
 
 def connect_substrate() -> SubstrateInterface:
-    url = os.getenv("URL")
-    substrate = SubstrateInterface(
-        url=url,
-    )
-    print("连接上节点: {}".format(url))
-    print(f"chain: {substrate.chain}, format: {substrate.ss58_format}, token symbol: {substrate.token_symbol}")
-    if substrate.chain != os.getenv("CHAIN"):
-        raise Exception(f"连接的节点不是{os.getenv('CHAIN')}")
+    try:
+        url = os.getenv("URL")
+        substrate = SubstrateInterface(
+            url=url,
+        )
+        print("连接上节点: {}".format(url))
+        print(f"chain: {substrate.chain}, format: {substrate.ss58_format}, token symbol: {substrate.token_symbol}")
+        if substrate.chain != os.getenv("CHAIN"):
+            raise Exception(f"连接的节点不是{os.getenv('CHAIN')}")
+    except Exception as e:
+        raise e
     return substrate
 
 
