@@ -368,7 +368,7 @@ if __name__ == "__main__":
     status = db.get_indexer_status("dot-20")
     print("status: ", status)
     # start = 375404
-    start = os.getenv("START_BLOCK")
+    start = int(os.getenv("START_BLOCK"))
     start_block = start if status is None else status[1] + 1
     print(f"开始的区块是: {start_block}")
     delay = 2
