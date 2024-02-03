@@ -1,4 +1,5 @@
-
+# 安装mysql
+这里我用docker安装最新版本
 # 克隆项目
 ```
 git clone https://github.com/octavei/dota-indexer.git
