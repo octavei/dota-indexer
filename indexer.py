@@ -350,26 +350,18 @@ class Indexer:
 
 
 if __name__ == "__main__":
-    substrate = connect_substrate()
     user = os.getenv("MYSQLUSER")
     password = os.getenv("PASSWORD")
     host = os.getenv("HOST")
     database = os.getenv("DATABASE")
-    db_url = f'mysql+mysqlconnector://{user}:{password}@{host}/{database}'
-    print("db_url: ", db_url)
-    db = DotaDB(db_url=db_url)
+    db = DotaDB(db_url=f'mysql+mysqlconnector://{user}:{password}@{host}/{database}')
     # 删除整个表结构
     # db.drop_all_tick_table("dota")
     # 删除表中数据
     # db.delete_all_tick_table("dota")
     db.session.commit()
     status = db.get_indexer_status("dot-20")
-    print("status: ", status)
-    # start = 375404
-    start = int(os.getenv("START_BLOCK"))
-    start_block = start if status is None else status[1] + 1
+    start_block = int(os.getenv("START_BLOCK")) if status is None else status[1] + 1
     print(f"开始的区块是: {start_block}")
-    delay = 2
-    crawler = RemarkCrawler(substrate, delay, start_block)
-    indexer = Indexer(db, crawler)
+    indexer = Indexer(db, RemarkCrawler(connect_substrate(), int(os.getenv("DELAY_BLOCK")), start_block))
     indexer.run()
