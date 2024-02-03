@@ -174,6 +174,7 @@ class Indexer:
     # 执行deploy操作
     # 1. deploy优先执行，因为同一个事务中的deploy操作会产生新表，不能跟其他操作一起
     # 2. deploy操作一个一个执行（不会批量），直到全部执行完
+    # 3. 每一个tick deploy结束，会创建与tick相对应的表格
     def _do_deploy(self, deploy_remarks: list[dict]):
         print("deploy_remarks: ", deploy_remarks)
         for item in deploy_remarks:
