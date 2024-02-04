@@ -332,6 +332,7 @@ class Indexer:
     # 3. 分类remarks
     # 4. 执行remarks操作
     def run(self):
+        while True:
             try:
                 latest_block_hash = self.crawler.substrate.get_chain_finalised_head()
                 latest_block_num = self.crawler.substrate.get_block_number(latest_block_hash)
@@ -348,7 +349,6 @@ class Indexer:
                 except Exception as e:
                     print(f"连接失败 {e}，正在重试。。。")
                 time.sleep(3)
-            return self.run()
 
 
 if __name__ == "__main__":
