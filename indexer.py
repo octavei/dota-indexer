@@ -111,7 +111,11 @@ class Indexer:
                             if (memo.get("op") == self.mint_op and self.ticks_mode.get(
                                     memo.get("tick")) != self.owner_mode) or \
                                     memo.get("op") == self.deploy_op:
-                                if len(es) > 1:
+                                if len(es) > 2:
+                                    is_vail_mint_or_deploy = False
+                                    self.logger.warning("非法的普通mint和deploy， 抛弃整个交易")
+                                    break
+                                if len(bs) == 2 and bs[1]["memo"].get("op") != self.memo_op:
                                     is_vail_mint_or_deploy = False
                                     self.logger.warning("非法的普通mint和deploy， 抛弃整个交易")
                                     break
