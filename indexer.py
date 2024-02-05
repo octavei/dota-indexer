@@ -39,7 +39,7 @@ class Indexer:
         self.db = db
         self.crawler = crawler
         self.dot20 = Dot20(db, self.crawler.substrate.ss58_format)
-        self.supported_ticks = [ascii("dota"), ascii("dddd"), ascii("idot")]
+        self.supported_ticks = ["dota", "dddd", "idot"]
         # 支持的操作
         self.deploy_op = "deploy"
         self.mint_op = "mint"
@@ -68,7 +68,7 @@ class Indexer:
         for remark_id, remark in enumerate(remarks):
             if remark["memo"].get("tick") is not None and isinstance(remark["memo"].get("tick"), str):
                 # ascii防特殊字符攻击
-                remark["memo"]["tick"] = ascii(remark["memo"].get("tick")).lower()
+                remark["memo"]["tick"] = ascii(remark["memo"].get("tick")).lower().strip("'")
 
             if remark["extrinsic_index"] == extrinsic_index:
                 es.append(remark)
