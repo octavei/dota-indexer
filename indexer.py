@@ -92,7 +92,9 @@ class Indexer:
                                 deploy_info = self.dot20.get_deploy_info(memo.get("tick"))
                                 if deploy_info is None:
                                     print(f"{memo.get('tick')} 还没有部署")
-                                    break
+                                    if memo.get("op") != self.deploy_op:
+                                        print("非deploy op， 该tick还没有部署， 抛弃整个batchall")
+                                        break
                                 else:
                                     self.ticks_mode[memo.get("tick")] = deploy_info.get("mode")
 
