@@ -39,7 +39,7 @@ class Indexer:
         self.db = db
         self.crawler = crawler
         self.dot20 = Dot20(db, self.crawler.substrate.ss58_format)
-        self.supported_ticks = ["dota", "dddd", "idot"]
+        self.supported_ticks = [ascii("dota"), ascii("dddd"), ascii("idot")]
         # 支持的操作
         self.deploy_op = "deploy"
         self.mint_op = "mint"
