@@ -213,6 +213,8 @@ class Indexer:
             except SQLAlchemyError as e:
                 print(f"deploy: {item}操作失败：{e}")
                 raise e
+            except Exception as e:
+                print(f"deploy: {item}操作失败：{e}")
 
     # 执行mint（fair、normal）操作
     # 1. 如果是fair模式，会计算平均值
@@ -244,6 +246,8 @@ class Indexer:
                 except SQLAlchemyError as e:
                     print(f"mint: {v}操作失败：{e}")
                     raise e
+                except Exception as e:
+                    print(f"mint: {v}操作失败：{e}")
 
     # 执行其他操作
     # 1. 其他操作包括：transfer, transferFrom, approve, mint（owner）
@@ -295,6 +299,8 @@ class Indexer:
                         except SQLAlchemyError as e:
                             print(f"批量操作: {bs}, 执行失败 {e}")
                             raise e
+                        except Exception as e:
+                            print(f"批量操作: {bs}, 执行失败 {e}")
 
                         print(f"待执行的非mint交易: \n {bs}")
                         bs = []
