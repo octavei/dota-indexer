@@ -89,6 +89,16 @@ class Indexer:
                         is_vail_mint_or_deploy = True
                         for b_i, b in enumerate(bs):
                             memo = b["memo"]
+
+                            # 判断json是否合法
+                            try:
+                                b_cp = b.copy()
+                                b_cp["memo"] = json.dumps(b["memo"])
+                                self.dot20.fmt_json_data(memo.get("op"), **b_cp)
+                            except Exception as e:
+                                self.logger.warning(f"非法的json字段或者值， 抛弃整个batchall: {e}")
+                                break
+
                             if self.ticks_mode.get(memo.get("tick")) is None:
                                 deploy_info = self.dot20.get_deploy_info(memo.get("tick"))
                                 if deploy_info is None:
@@ -119,14 +129,6 @@ class Indexer:
                                     is_vail_mint_or_deploy = False
                                     self.logger.warning("非法的普通mint和deploy， 抛弃整个交易")
                                     break
-
-                            try:
-                                b_cp = b.copy()
-                                b_cp["memo"] = json.dumps(b["memo"])
-                                self.dot20.fmt_json_data(memo.get("op"), **b_cp)
-                            except Exception as e:
-                                self.logger.warning(f"非法的json字段或者值， 抛弃整个batchall: {e}")
-                                break
 
                             if memo.get("op") == "memo" and len(bs) > 1:
                                 if b_i != len(bs) - 1:
