@@ -92,7 +92,7 @@ class Indexer:
                                 deploy_info = self.dot20.get_deploy_info(memo.get("tick"))
                                 if deploy_info is None:
                                     print(f"{memo.get('tick')} 还没有部署")
-                                    # break
+                                    break
                                 else:
                                     self.ticks_mode[memo.get("tick")] = deploy_info.get("mode")
 
@@ -105,7 +105,7 @@ class Indexer:
                                 break
 
                             # 普通mint和deploy在一个交易中只能有一个 并且不能批量
-                            if (memo.get("op") == self.memo_op and self.ticks_mode.get(
+                            if (memo.get("op") == self.mint_op and self.ticks_mode.get(
                                     memo.get("tick")) != self.owner_mode) or \
                                     memo.get("op") == self.deploy_op:
                                 if len(es) > 1:
