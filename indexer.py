@@ -336,7 +336,7 @@ class Indexer:
                                                          "crawler_height": self.crawler.start_block})
             self.db.session.commit()
         except Exception as e:
-            print(f"整个区块的交易执行失败：{e}")
+            self.logger.error(f"整个区块的交易执行失败：{e}")
             raise e
 
     # 运行索引器
@@ -374,7 +374,7 @@ if __name__ == "__main__":
     db = DotaDB(db_url=f'mysql+mysqlconnector://{user}:{password}@{host}/{database}')
     # 删除整个表结构
     # db.drop_all_tick_table("dota")
-    # 删除表中数据
+    # # 删除表中数据
     # db.delete_all_tick_table("dota")
 
     db.session.commit()
