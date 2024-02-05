@@ -309,7 +309,7 @@ class Indexer:
                 es = []
                 extrinsic_index = remark["extrinsic_index"]
 
-    # 执行整个区块的rremarks
+    # 执行整个区块的remarks
     # 1. 先过滤remarks
     # 2. 分类remarks
     # 3. 执行deploy操作
