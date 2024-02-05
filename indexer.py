@@ -91,7 +91,7 @@ class Indexer:
                             if self.ticks_mode.get(memo.get("tick")) is None:
                                 deploy_info = self.dot20.get_deploy_info(memo.get("tick"))
                                 if deploy_info is None:
-                                    print(f"{memo.get('tick')} 还没有部署")
+                                    # print(f"{memo.get('tick')} 还没有部署")
                                     if memo.get("op") != self.deploy_op:
                                         print("非deploy op， 该tick还没有部署， 抛弃整个batchall")
                                         break
@@ -120,7 +120,7 @@ class Indexer:
                                 b_cp["memo"] = json.dumps(b["memo"])
                                 self.dot20.fmt_json_data(memo.get("op"), **b_cp)
                             except Exception as e:
-                                print(f"json {b} 错误 err: {e}")
+                                print(f"非法的json字段或者值， 抛弃整个batchall: {e}")
                                 break
 
                             if memo.get("op") == "memo" and len(bs) > 1:
