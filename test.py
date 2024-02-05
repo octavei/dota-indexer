@@ -8,3 +8,5 @@ if pp == ascii("dota"):
     print("OK")
 else:
     print("Not OK")
+
+print(int(1) / 3)

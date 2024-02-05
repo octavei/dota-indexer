@@ -83,7 +83,7 @@ class Indexer:
 
                     if btach_all_index != r["batchall_index"] or i == len(es) - 1:
                         print("正在处理 第 {} 个batchall".format(btach_all_index))
-                        print("bs:", bs)
+                        # print("bs:", bs)
                         # bs_cp = bs.copy()
                         is_vail_mint_or_deploy = True
                         for b_i, b in enumerate(bs):
@@ -177,12 +177,12 @@ class Indexer:
                     if memo.get("op") == self.mint_op and self.ticks_mode.get(memo.get("tick")) != self.owner_mode:
                         vail_mint_user = unique_user.get(tick) if unique_user.get(tick) is not None else []
                         if user not in vail_mint_user:
-                            print(f"分类得到合法mint ： {remark}")
+                            # print(f"分类得到合法mint ： {remark}")
                             mint_remarks[tick] = [remark] if mint_remarks.get(tick) is None else \
                                 mint_remarks[tick].append(remark)
                             unique_user[tick] = vail_mint_user.append(user)
-                        else:
-                            print(f"用户 {user} 在本区块中已经提交mint")
+                        # else:
+                        #     print(f"用户 {user} 在本区块中已经提交mint")
                         rs = []
                     if memo.get("op") == self.deploy_op:
                         deploy_remarks.append(remark)
@@ -206,42 +206,42 @@ class Indexer:
                 with self.db.session.begin():
                     memo = item["memo"]
                     if memo.get("op") != self.deploy_op:
-                        raise Exception(f"{memo} 非法进入不属于自己的代码块")
+                        raise Exception(f"{memo} 非法进入别的代码块")
                     tick = self.dot20.deploy(**item)
                     self.db.create_tables_for_new_tick(tick)
+                    print(f"deploy {item} 操作成功")
                 self.db.session.commit()
             except SQLAlchemyError as e:
-                print(f"deploy: {item}操作失败：{e}")
+                print(f"deploy: {item} 操作失败：{e}")
                 raise e
             except Exception as e:
-                print(f"deploy: {item}操作失败：{e}")
+                print(f"deploy: {item} 操作失败：{e}")
 
     # 执行mint（fair、normal）操作
     # 1. 如果是fair模式，会计算平均值
     # 2. mint操作有非sql失败，直接continue
     # 3. mint操作有sql失败，直接break（并且所有操作回滚)
     def _do_mint(self, remarks_dict: Dict[str, list]):
-        print("mint_remarks: ", remarks_dict)
+        # print("mint_remarks: ", remarks_dict)
         for item, value in remarks_dict.items():
             # try:
             deploy_info = self.db.get_deploy_info(item)
             if len(deploy_info) == 0:
-                raise Exception(f"{item}还没有部署")
-            print("deploy_info: ", deploy_info)
+                raise Exception(f"{item} 还没有部署")
             mode = deploy_info[0][11]
             av_amt = 0
             if mode == self.fair_mode:
                 amt = deploy_info[0][12]
-                av_amt = int(amt) / len(value)
+                av_amt = int(int(amt) / len(value))
             for v_id, v in enumerate(value):
                 try:
                     with self.db.session.begin_nested():
                         memo = v["memo"]
                         if mode == self.fair_mode:
                             memo["lim"] = av_amt
-                        print("mint memo:", memo)
                         v["memo"] = json.dumps(memo)
                         self.dot20.mint(**v)
+                        print(f"mint: {v} 操作成功")
 
                 except SQLAlchemyError as e:
                     print(f"mint: {v}操作失败：{e}")
@@ -302,7 +302,8 @@ class Indexer:
                         except Exception as e:
                             print(f"批量操作: {bs}, 执行失败 {e}")
 
-                        print(f"待执行的非mint交易: \n {bs}")
+                        # print(f"待执行的非mint交易: \n {bs}")
+                        print(f"批量操作: {bs}, 执行成功")
                         bs = []
                         batchall_index = b["batchall_index"]
                 es = []
