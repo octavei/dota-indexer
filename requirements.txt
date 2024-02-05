@@ -6,7 +6,7 @@ charset-normalizer==3.3.2
 cytoolz==0.12.2
 docopt==0.6.2
 dot20 @ git+https://github.com/octavei/dot-20.git@a0f4d42e3bbdc3a534f4f631ab8927b92b369282
-dotacrawler @ git+https://github.com/octavei/dota-indexer-crawler.git@9add2b16bc6aa367316b3e932c74e8497d45bf6e
+dotacrawler @ git+https://github.com/octavei/dota-indexer-crawler.git@66311cf7bcf3a6152167c30e5dfd4026557c6406
 dotadb @ git+https://github.com/octavei/dota-indexer-db.git@5b757acaa995d94b23181b8b10bea36d7a0579ef
 ecdsa==0.18.0
 eth-hash==0.6.0
@@ -17,6 +17,7 @@ greenlet==3.0.3
 idna==3.6
 jsonschema==4.21.1
 jsonschema-specifications==2023.12.1
+loguru==0.7.2
 more-itertools==10.2.0
 mysql-connector==2.2.9
 mysql-connector-python==8.3.0
