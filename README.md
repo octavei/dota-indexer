@@ -1,26 +1,26 @@
-# 安装mysql
-这里我用docker安装最新版本
-# 克隆项目
+#  Install mysql
+Here I use docker to install the latest version
+# clone project
 ```
 git clone https://github.com/octavei/dota-indexer.git
 ```
-# 创建python虚拟环境并激活
+# Create a python virtual environment and activate it
 ```angular2html
 python3 -m venv myenv
 source myenv/bin/activate
 ```
-# 安装依赖
+# pip install
 ```angular2html
 pip install -r requirements.txt
 ```
-# 修改配置
+# Modify modify environment variables
 
 ```angular2html
 cp .env.example .env
 ```
-修改对应环境变量
+Note that the configuration in the .env file should be modified according to your actual situation.
 
-# 运行索引器
+# run
 ```angular2html
 python indexer.py
 ```
